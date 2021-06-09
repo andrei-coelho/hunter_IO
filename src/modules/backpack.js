@@ -3,6 +3,8 @@ export default {
   __status__ : false,
   __use_alternative__ : false,
   __version_files__: false,
+  __use__SSL__:false,
+  __prfix_url__:'http://',
 
   sha(texto){
     
@@ -29,6 +31,11 @@ export default {
       this.__use_alternative__ = true;
     } 
 
+    if (typeof __use_SSL__ == "boolean") {
+      this.__use_SSL__ = true;
+      this.__prfix_url__ = 'https://';
+    } 
+
     if(this.__status__ != 'production'){
       document.head.innerHTML = document.head.innerHTML.toString().replace('{__title__}', '')
       document.body.innerHTML = document.body.innerHTML.toString().replace('{__metas__}', '')
@@ -41,10 +48,17 @@ export default {
           process.env.VUE_APP_URL_PRODUCTION : 
           process.env.VUE_APP_URL_DEVELOPMENT ;
 
+    Vue.prototype.__URL__API__ = 
+      this.__status__ == 'production' &&  this.__use_alternative__ ?
+      process.env.VUE_APP_URL_API_ALTERNATIVE : 
+        this.__status__ == 'production' &&  !this.__use_alternative__?
+          process.env.VUE_APP_URL_API_PRODUCTION : 
+          process.env.VUE_APP_URL_API_DEVELOPMENT ;
+
     Vue.prototype.__version_files__ = process.env.VUE_APP_VERSION_FILES;
 
     Vue.prototype.GET = (route, callback) => {
-        route = Vue.prototype.__URL__ + "api/"+ route;
+        route = Vue.prototype.api() + route;
     
         fetch(route)
         .then(function(response) {
@@ -58,14 +72,15 @@ export default {
         });
     }
 
+    
     Vue.prototype.POST = (route, callback, data) => {
       
       var init = { 
         method: 'POST',
         body: JSON.stringify(data)
       };
-      route = Vue.prototype.__URL__ + "api/"+ route;
-      console.log(route);
+      route = Vue.prototype.api() + route;
+
       fetch(new Request(route, init))
       .then(function(response) {
         return response.json()
@@ -76,14 +91,22 @@ export default {
       .catch(function(error) {
         callback(error.message, true);
       });
+
     }
 
+
     Vue.prototype.file = file  => {
-      return this.__status__ != "production" ? Vue.prototype.__URL__ + file + "?v=" + this.sha(new Date().toString()): Vue.prototype.__URL__ + file + "?v="+Vue.prototype.__version_files__;
+
+      let url = this.__status__ != "production" ? Vue.prototype.__URL__ + file + "?v=" + this.sha(new Date().toString()): Vue.prototype.__URL__ + file + "?v="+Vue.prototype.__version_files__;
+      return this.__prfix_url__ + url;
     }
 
     Vue.prototype.link = (uri = "") => {
-      return Vue.prototype.__URL__ + uri;
+      return this.__prfix_url__ + Vue.prototype.__URL__ + uri;
+    }
+
+    Vue.prototype.api = (uri = "") => {
+      return this.__prfix_url__ + Vue.prototype.__URL__API__ + uri;
     }
 
     Vue.prototype.setCookie = (name,value,days) => {
